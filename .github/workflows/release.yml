@@ -4,30 +4,55 @@ on:
   push:
     branches:
       - main
+      - investigation/release-readiness
+  workflow_dispatch:
 
 jobs:
-  deploy-production:
+  validate-release:
+    name: Validate Release Candidate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy to Production
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
         run: |
-          chmod +x scripts/deploy.sh
+          npm install --prefix app
+
+      - name: Run Validation Tests
+        run: |
+          echo "Running OrderFlow v2.3.0 validation test suite..."
+          npm test --prefix app
+
+      - name: Verify Release Version Traceability
+        run: |
+          echo "Verifying release version alignment..."
+          node -e "const pkg = require('./app/package.json'); const rel = require('./release/release.json'); if(pkg.version !== '2.3.0' || rel.Version !== '2.3.0') { console.error('Version mismatch'); process.exit(1); } console.log('Version validated: ' + pkg.version);"
+          echo "All pre-release validation checks passed successfully."
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate-release
+    environment:
+      name: production
+    env:
+      RELEASE_VERSION: "v2.3.0"
+      ENVIRONMENT: "production"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Make Scripts Executable
+        run: |
+          chmod +x scripts/deploy.sh scripts/rollback.sh
+
+      - name: Execute Safe Production Deployment
+        run: |
           ./scripts/deploy.sh
 
-  validate-release:
-    runs-on: ubuntu-latest
-    needs: deploy-production
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Tests
-        run: |
-          echo "Running validation tests..."
-          npm install --prefix app
-          npm test --prefix app
-          echo "Validation complete - some tests failed because deployment config has errors"
-          exit 1

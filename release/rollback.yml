@@ -1,2 +1,14 @@
-rollback_strategy: 
-target_version: 
+rollback_strategy: automated-rolling-rollback
+target_version: "v2.2.9"
+current_version: "v2.3.0"
+execution_method: "kubectl rollout undo deployment/orderflow-app"
+automated_fallback_script: "scripts/rollback.sh"
+trigger_conditions:
+  - health_check_failures_exceed_3_consecutive
+  - error_rate_above_1_percent
+  - latency_p99_above_2000ms
+recovery_time_objective_minutes: 2
+notification_channels:
+  - "#ops-critical-alerts"
+  - "incident-response@orderflow.internal"
+
