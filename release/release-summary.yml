@@ -1,5 +1,11 @@
-status: unknown
+status: ready-for-production
 environment: production
-version: latest
-approval: pending
-rollback: none
+version: v2.3.0
+approval: approved
+rollback: automated-rolling-rollback
+target_rollback_version: v2.2.9
+infrastructure: kubernetes-cluster
+deployment_strategy: rolling-update
+health_check_endpoint: /health
+validation_status: passed
+
